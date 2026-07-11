@@ -1,0 +1,23 @@
+# Built files
+/build/
+/app/build/
+.gradle/
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+*.tmp
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+!app/src/main/res/**/*.xml
