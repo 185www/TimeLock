@@ -28,25 +28,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".ui.screens.InterceptActivity"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:showWhenLocked="true"
-            android:taskAffinity=""
-            android:theme="@style/Theme.TimeLock.Black"
-            android:turnScreenOn="true"
-            android:lockTaskMode="if_whitelisted" />
-
-        <activity
-            android:name=".ui.screens.TimeUpActivity"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:showWhenLocked="true"
-            android:taskAffinity=""
-            android:theme="@style/Theme.TimeLock.Black"
-            android:turnScreenOn="true" />
-
         <service
             android:name=".service.LockAccessibilityService"
             android:exported="true"

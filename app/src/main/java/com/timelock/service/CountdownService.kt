@@ -9,7 +9,6 @@ import android.os.Build
 import android.os.CountDownTimer
 import android.os.IBinder
 import com.timelock.data.LockState
-import com.timelock.ui.screens.TimeUpActivity
 
 class CountdownService : Service() {
 
@@ -51,10 +50,7 @@ class CountdownService : Service() {
                 LockState.isTimerRunning = false
                 LockState.remainingSeconds = 0L
 
-                val intent = Intent(this@CountdownService, TimeUpActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                }
-                startActivity(intent)
+                LockAccessibilityService.instance?.showTimeUp()
 
                 try {
                     stopForeground(STOP_FOREGROUND_REMOVE)
