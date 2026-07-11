@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#CC000000"
+    android:gravity="center">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/interceptTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="即将打开应用"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/interceptAppName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text=""
+            android:textColor="#FFD54F"
+            android:textSize="18sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="你打算使用多久？"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
+        <GridLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:columnCount="3"
+            android:rowCount="3">
+
+            <Button
+                android:id="@+id/btn5"
+                android:layout_width="100dp"
+                android:layout_height="56dp"
+                android:layout_margin="6dp"
+                android:text="5 分钟"
+                android:backgroundTint="#2E7D32"
+                android:textColor="#FFFFFF" />
+            <Button
+                android:id="@+id/btn10"
+                android:layout_width="100dp"
+                android:layout_height="56dp"
+                android:layout_margin="6dp"
+                android:text="10 分钟"
+                android:backgroundTint="#2E7D32"
+                android:textColor="#FFFFFF" />
+            <Button
+                android:id="@+id/btn15"
+                android:layout_width="100dp"
+                android:layout_height="56dp"
+                android:layout_margin="6dp"
+                android:text="15 分钟"
+                android:backgroundTint="#2E7D32"
+                android:textColor="#FFFFFF" />
+            <Button
+                android:id="@+id/btn30"
+                android:layout_width="100dp"
+                android:layout_height="56dp"
+                android:layout_margin="6dp"
+                android:text="30 分钟"
+                android:backgroundTint="#2E7D32"
+                android:textColor="#FFFFFF" />
+            <Button
+                android:id="@+id/btn60"
+                android:layout_width="100dp"
+                android:layout_height="56dp"
+                android:layout_margin="6dp"
+                android:text="60 分钟"
+                android:backgroundTint="#2E7D32"
+                android:textColor="#FFFFFF" />
+            <Button
+                android:id="@+id/btn120"
+                android:layout_width="100dp"
+                android:layout_height="56dp"
+                android:layout_margin="6dp"
+                android:text="120 分钟"
+                android:backgroundTint="#2E7D32"
+                android:textColor="#FFFFFF" />
+        </GridLayout>
+
+    </LinearLayout>
+</FrameLayout>

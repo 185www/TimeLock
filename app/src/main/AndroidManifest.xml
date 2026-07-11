@@ -41,10 +41,14 @@
         </service>
 
         <service
-            android:name=".service.CountdownService"
+            android:name=".service.TrackerService"
             android:foregroundServiceType="specialUse"
             android:exported="false"
-            android:stopWithTask="false" />
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Show lock overlay to limit app usage time" />
+        </service>
 
     </application>
 </manifest>

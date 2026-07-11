@@ -1,212 +1,147 @@
 package com.timelock.service
 
 import android.content.Context
-import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.Typeface
 import android.os.Build
+import android.provider.Settings
 import android.view.Gravity
-import android.view.KeyEvent
+import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
-import android.widget.FrameLayout
-import android.widget.LinearLayout
 import android.widget.TextView
+import com.timelock.R
 
 class OverlayController(private val context: Context) {
 
-    private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-    private var currentOverlay: View? = null
+    private val windowManager: WindowManager =
+        context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-    fun showInterceptOverlay(onConfirm: (Int) -> Unit) {
-        dismiss()
-
-        val density = context.resources.displayMetrics.density
-        fun dp(n: Int) = (n * density).toInt()
-
-        val root = FrameLayout(context).apply {
-            setBackgroundColor(Color.BLACK)
-            isFocusable = true
-            isFocusableInTouchMode = true
-            setOnKeyListener { _, keyCode, event ->
-                event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK
+    private val baseParams: WindowManager.LayoutParams
+        get() {
+            val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                @Suppress("DEPRECATION")
+                WindowManager.LayoutParams.TYPE_PHONE
+            }
+            return WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                type,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                        or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        or WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             }
         }
 
-        val container = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            layoutParams = FrameLayout.LayoutParams(-1, -1)
-        }
-        root.addView(container)
+    private var interceptView: View? = null
+    private var countdownView: View? = null
+    private var timeUpView: View? = null
+    private var countdownText: TextView? = null
 
-        container.addView(TextView(context).apply {
-            text = "你打算用多久？"
-            textSize = 28f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, dp(48))
-        })
-
-        var selectedMinutes = 0
-        val confirmBtn = Button(context).apply {
-            text = "请先选择时长"
-            setTextColor(Color.WHITE)
-            textSize = 18f
-            isEnabled = false
-            setBackgroundColor(Color.parseColor("#FF5722"))
-            layoutParams = LinearLayout.LayoutParams(dp(280), dp(56))
+    private val countdownParams: WindowManager.LayoutParams
+        get() = baseParams.apply {
+            flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
         }
-        confirmBtn.setOnClickListener {
-            if (selectedMinutes > 0) {
-                onConfirm(selectedMinutes)
-                dismiss()
+
+    fun haveOverlayPermission(): Boolean = Settings.canDrawOverlays(context)
+
+    fun showIntercept(appName: String, onConfirm: (Int) -> Unit) {
+        if (interceptView != null) return
+        if (!haveOverlayPermission()) return
+
+        val view = LayoutInflater.from(context).inflate(R.layout.overlay_intercept, null)
+        view.findViewById<TextView>(R.id.interceptAppName).text = appName
+
+        val minutes = listOf(5, 10, 15, 30, 60, 120)
+        val ids = listOf(
+            R.id.btn5, R.id.btn10, R.id.btn15,
+            R.id.btn30, R.id.btn60, R.id.btn120
+        )
+        ids.forEachIndexed { index, id ->
+            view.findViewById<Button>(id).setOnClickListener {
+                onConfirm(minutes[index])
             }
         }
 
-        fun makePresetButton(mins: Int): Button {
-            val btn = Button(context).apply {
-                text = "${mins}分钟"
-                setTextColor(Color.WHITE)
-                textSize = 16f
-                setBackgroundColor(Color.DKGRAY)
-                layoutParams = LinearLayout.LayoutParams(dp(88), dp(48)).apply {
-                    setMargins(dp(6), 0, dp(6), 0)
-                }
-                setOnClickListener {
-                    selectedMinutes = mins
-                    confirmBtn.text = "确认 — 使用 ${mins} 分钟"
-                    confirmBtn.isEnabled = true
-                    confirmBtn.setBackgroundColor(Color.parseColor("#4CAF50"))
-                }
-            }
-            return btn
-        }
-
-        fun addRow(minsList: List<Int>) {
-            val row = LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-                layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
-                    setMargins(0, 0, 0, dp(12))
-                }
-            }
-            for (m in minsList) row.addView(makePresetButton(m))
-            container.addView(row)
-        }
-
-        addRow(listOf(5, 10, 15))
-        addRow(listOf(30, 60, 90))
-        addRow(listOf(120))
-
-        container.addView(TextView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(-1, dp(32))
-        })
-
-        container.addView(confirmBtn)
-
-        container.addView(TextView(context).apply {
-            text = "锁定期间无法跳过"
-            textSize = 14f
-            setTextColor(Color.GRAY)
-            gravity = Gravity.CENTER
-            setPadding(0, dp(24), 0, 0)
-        })
-
-        val params = WindowManager.LayoutParams(
-            -1, -1,
-            getOverlayType(),
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.FILL }
-
-        windowManager.addView(root, params)
-        currentOverlay = root
+        windowManager.addView(view, baseParams)
+        interceptView = view
     }
 
-    fun showTimeUpOverlay(onDismiss: () -> Unit) {
-        dismiss()
-
-        val density = context.resources.displayMetrics.density
-        fun dp(n: Int) = (n * density).toInt()
-
-        val root = FrameLayout(context).apply {
-            setBackgroundColor(Color.BLACK)
-            isFocusable = true
-            isFocusableInTouchMode = true
-            setOnKeyListener { _, keyCode, event ->
-                event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK
+    fun hideIntercept() {
+        interceptView?.let {
+            try {
+                windowManager.removeView(it)
+            } catch (_: Exception) {
             }
+            interceptView = null
         }
-
-        val container = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            layoutParams = FrameLayout.LayoutParams(-1, -1)
-        }
-        root.addView(container)
-
-        container.addView(TextView(context).apply {
-            text = "⏰"
-            textSize = 72f
-            gravity = Gravity.CENTER
-        })
-
-        container.addView(TextView(context).apply {
-            text = "时间到啦"
-            textSize = 36f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding(0, dp(24), 0, dp(48))
-        })
-
-        Button(context).apply {
-            text = "好的"
-            setTextColor(Color.WHITE)
-            textSize = 20f
-            setBackgroundColor(Color.parseColor("#E53935"))
-            layoutParams = LinearLayout.LayoutParams(dp(280), dp(56))
-            setOnClickListener { onDismiss() }
-        }.also { container.addView(it) }
-
-        val params = WindowManager.LayoutParams(
-            -1, -1,
-            getOverlayType(),
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.FILL }
-
-        windowManager.addView(root, params)
-        currentOverlay = root
     }
 
-    fun dismiss() {
-        currentOverlay?.let {
-            try { windowManager.removeView(it) } catch (_: Exception) {}
-        }
-        currentOverlay = null
+    fun showCountdown(onGiveUp: () -> Unit) {
+        if (countdownView != null) return
+        if (!haveOverlayPermission()) return
+
+        val view = LayoutInflater.from(context).inflate(R.layout.overlay_countdown, null)
+        countdownText = view.findViewById(R.id.countdownText)
+        view.findViewById<Button>(R.id.btnGiveUp).setOnClickListener { onGiveUp() }
+
+        windowManager.addView(view, countdownParams)
+        countdownView = view
     }
 
-    private fun getOverlayType(): Int {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        else {
-            @Suppress("DEPRECATION")
-            WindowManager.LayoutParams.TYPE_PHONE
+    fun updateCountdown(seconds: Long) {
+        countdownText?.text = formatTime(seconds)
+    }
+
+    fun hideCountdown() {
+        countdownView?.let {
+            try {
+                windowManager.removeView(it)
+            } catch (_: Exception) {
+            }
+            countdownView = null
+            countdownText = null
         }
+    }
+
+    fun showTimeUp(appName: String, onHome: () -> Unit) {
+        if (timeUpView != null) return
+        if (!haveOverlayPermission()) return
+
+        val view = LayoutInflater.from(context).inflate(R.layout.overlay_timeup, null)
+        view.findViewById<TextView>(R.id.timeUpAppName).text = "「$appName」使用时间已结束"
+        view.findViewById<Button>(R.id.btnHome).setOnClickListener { onHome() }
+
+        windowManager.addView(view, baseParams)
+        timeUpView = view
+    }
+
+    fun hideTimeUp() {
+        timeUpView?.let {
+            try {
+                windowManager.removeView(it)
+            } catch (_: Exception) {
+            }
+            timeUpView = null
+        }
+    }
+
+    fun removeAll() {
+        hideIntercept()
+        hideCountdown()
+        hideTimeUp()
+    }
+
+    private fun formatTime(seconds: Long): String {
+        val s = if (seconds < 0) 0 else seconds
+        val m = s / 60
+        val sec = s % 60
+        return "%02d:%02d".format(m, sec)
     }
 }

@@ -1,7 +1,6 @@
 package com.timelock.service
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
 import android.os.Build
 import android.view.accessibility.AccessibilityEvent
@@ -10,30 +9,41 @@ import com.timelock.data.LockState
 
 class LockAccessibilityService : AccessibilityService() {
 
+    private var lastPackage: String = ""
+    private var lastEventTime: Long = 0L
+
     override fun onServiceConnected() {
-        val info = AccessibilityServiceInfo().apply {
-            eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
-                AccessibilityEvent.TYPE_WINDOWS_CHANGED
-            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-            notificationTimeout = 0
-            flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
-                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
-        }
-        serviceInfo = info
+        super.onServiceConnected()
+        AppRepository.init(this)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null || event.packageName == null) return
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        if (event == null) return
 
-        val packageName = event.packageName.toString()
-        if (!LockState.canIntercept(packageName)) return
+        val packageName = event.packageName?.toString() ?: return
 
-        if (AppRepository.isMonitored(packageName)) {
-            val intent = Intent(this, CountdownService::class.java).apply {
-                action = CountdownService.ACTION_INTERCEPT
-                putExtra(CountdownService.EXTRA_PACKAGE, packageName)
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED
+        ) {
+            if (packageName == lastPackage) return
+            if (packageName.isEmpty()) return
+            if (packageName == this.packageName) return
+
+            val now = System.currentTimeMillis()
+            if (now - lastEventTime < 500) return
+
+            lastPackage = packageName
+            lastEventTime = now
+
+            if (!AppRepository.isMonitored(packageName)) return
+            if (!LockState.canIntercept(packageName)) return
+
+            val intent = Intent(this, TrackerService::class.java).apply {
+                action = TrackerService.ACTION_INTERCEPT
+                putExtra(TrackerService.EXTRA_PACKAGE, packageName)
             }
+            LockState.isIntercepting = true
+            LockState.lockedPackage = packageName
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(intent)
             } else {

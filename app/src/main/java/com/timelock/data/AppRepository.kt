@@ -2,15 +2,26 @@ package com.timelock.data
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
-import android.graphics.Bitmap
-import android.graphics.Canvas
+import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 
 object AppRepository {
+    private const val PREFS_NAME = "timelock_prefs"
+    private const val KEY_SELECTED = "selected_packages"
+
+    private lateinit var prefs: SharedPreferences
     private val selectedPackages = mutableSetOf<String>()
 
+    fun init(context: Context) {
+        prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        selectedPackages.clear()
+        selectedPackages.addAll(prefs.getStringSet(KEY_SELECTED, emptySet()) ?: emptySet())
+    }
+
     fun loadInstalledApps(context: Context): List<SelectedApp> {
+        if (!::prefs.isInitialized) init(context)
         val pm = context.packageManager
         val mainIntent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
@@ -18,23 +29,18 @@ object AppRepository {
 
         val resolveInfos = pm.queryIntentActivities(mainIntent, 0)
         val ourPackage = context.packageName
-        val appMap = mutableMapOf<String, SelectedApp>()
+        val appMap = linkedMapOf<String, SelectedApp>()
 
         for (resolveInfo in resolveInfos) {
             val activityInfo = resolveInfo.activityInfo ?: continue
             val packageName = activityInfo.packageName
             if (packageName == ourPackage || packageName in appMap) continue
-
-            val flags = activityInfo.applicationInfo.flags
-            if ((flags and ApplicationInfo.FLAG_SYSTEM) != 0) continue
+            if ((activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0) continue
 
             val appName = resolveInfo.loadLabel(pm).toString()
-            val icon = drawableToBitmap(resolveInfo.loadIcon(pm))
-
             appMap[packageName] = SelectedApp(
                 packageName = packageName,
                 appName = appName,
-                icon = icon,
                 isSelected = packageName in selectedPackages
             )
         }
@@ -42,25 +48,28 @@ object AppRepository {
         return appMap.values.sortedBy { it.appName }
     }
 
-    private fun drawableToBitmap(drawable: Drawable): Bitmap? {
+    fun getAppIcon(context: Context, packageName: String): Drawable? {
         return try {
-            val bitmap = Bitmap.createBitmap(
-                drawable.intrinsicWidth.coerceAtLeast(48),
-                drawable.intrinsicHeight.coerceAtLeast(48),
-                Bitmap.Config.ARGB_8888
-            )
-            val canvas = Canvas(bitmap)
-            drawable.setBounds(0, 0, canvas.width, canvas.height)
-            drawable.draw(canvas)
-            bitmap
+            context.packageManager.getApplicationIcon(packageName)
         } catch (_: Exception) {
             null
         }
     }
 
+    fun getAppName(context: Context, packageName: String): String {
+        return try {
+            val info = context.packageManager.getApplicationInfo(packageName, 0)
+            context.packageManager.getApplicationLabel(info).toString()
+        } catch (_: Exception) {
+            packageName
+        }
+    }
+
     fun togglePackage(packageName: String, selected: Boolean) {
-        if (selected) selectedPackages.add(packageName)
-        else selectedPackages.remove(packageName)
+        if (selected) selectedPackages.add(packageName) else selectedPackages.remove(packageName)
+        if (::prefs.isInitialized) {
+            prefs.edit().putStringSet(KEY_SELECTED, selectedPackages.toSet()).apply()
+        }
     }
 
     fun isMonitored(packageName: String): Boolean = packageName in selectedPackages
