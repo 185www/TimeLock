@@ -17,7 +17,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -142,6 +144,40 @@ fun MainScreen() {
                     description = if (notifWarning) "未授权" else "倒计时期间显示通知，保持服务存活",
                     buttonText = if (notifWarning) "去开启" to { openNotificationSettings(context) } else null,
                     isWarning = notifWarning
+                )
+            }
+
+            // ---- Overlay permission (needed for background activity launch on Android 12+) ----
+            item {
+                val hasOverlay = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(context)
+                PermissionCard(
+                    icon = Icons.Default.Security,
+                    title = "悬浮窗权限",
+                    description = if (hasOverlay) "已授权 ✓" else "部分设备需要悬浮窗权限才能弹出拦截界面",
+                    buttonText = if (hasOverlay) null else "去开启" to {
+                        val intent = Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:${context.packageName}")
+                        )
+                        context.startActivity(intent)
+                    },
+                    isWarning = !hasOverlay
+                )
+            }
+
+            // ---- Auto start (MIUI/EMUI/ColorOS) ----
+            item {
+                PermissionCard(
+                    icon = Icons.Default.BatteryChargingFull,
+                    title = "自启动",
+                    description = "MIUI/EMUI/ColorOS 等系统需允许自启动，否则后台服务会被杀掉",
+                    buttonText = "去设置" to {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                        }
+                        context.startActivity(intent)
+                    },
+                    isWarning = false
                 )
             }
 
@@ -295,9 +331,17 @@ private fun AppItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (app.icon != null) {
+                Image(
+                    bitmap = app.icon.asImageBitmap(),
+                    contentDescription = app.appName,
+                    modifier = Modifier.size(40.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = app.appName,
@@ -320,12 +364,14 @@ private fun AppItem(
 }
 
 private fun isAccessibilityEnabled(context: Context): Boolean {
-    val service = "${context.packageName}/.service.LockAccessibilityService"
+    val shortForm = "${context.packageName}/.service.LockAccessibilityService"
+    val longForm = "${context.packageName}/${context.packageName}.service.LockAccessibilityService"
     return try {
-        Settings.Secure.getString(
+        val services = Settings.Secure.getString(
             context.contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        )?.contains(service) == true
+        ) ?: ""
+        services.contains(shortForm) || services.contains(longForm)
     } catch (_: Exception) {
         false
     }

@@ -3,8 +3,9 @@ package com.timelock.data
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
 
 object AppRepository {
     private val selectedPackages = mutableSetOf<String>()
@@ -15,27 +16,25 @@ object AppRepository {
             addCategory(Intent.CATEGORY_LAUNCHER)
         }
 
-        val resolveInfos: List<ResolveInfo> = pm.queryIntentActivities(mainIntent, 0)
-
+        val resolveInfos = pm.queryIntentActivities(mainIntent, 0)
         val ourPackage = context.packageName
         val appMap = mutableMapOf<String, SelectedApp>()
 
         for (resolveInfo in resolveInfos) {
             val activityInfo = resolveInfo.activityInfo ?: continue
             val packageName = activityInfo.packageName
-
-            if (packageName == ourPackage) continue
-            if (packageName in appMap) continue
+            if (packageName == ourPackage || packageName in appMap) continue
 
             val flags = activityInfo.applicationInfo.flags
-            val isSystem = (flags and ApplicationInfo.FLAG_SYSTEM) != 0
-
-            if (isSystem) continue
+            if ((flags and ApplicationInfo.FLAG_SYSTEM) != 0) continue
 
             val appName = resolveInfo.loadLabel(pm).toString()
+            val icon = drawableToBitmap(resolveInfo.loadIcon(pm))
+
             appMap[packageName] = SelectedApp(
                 packageName = packageName,
                 appName = appName,
+                icon = icon,
                 isSelected = packageName in selectedPackages
             )
         }
@@ -43,19 +42,27 @@ object AppRepository {
         return appMap.values.sortedBy { it.appName }
     }
 
-    fun togglePackage(packageName: String, selected: Boolean) {
-        if (selected) {
-            selectedPackages.add(packageName)
-        } else {
-            selectedPackages.remove(packageName)
+    private fun drawableToBitmap(drawable: Drawable): Bitmap? {
+        return try {
+            val bitmap = Bitmap.createBitmap(
+                drawable.intrinsicWidth.coerceAtLeast(48),
+                drawable.intrinsicHeight.coerceAtLeast(48),
+                Bitmap.Config.ARGB_8888
+            )
+            val canvas = Canvas(bitmap)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            bitmap
+        } catch (_: Exception) {
+            null
         }
     }
 
-    fun isMonitored(packageName: String): Boolean {
-        return packageName in selectedPackages
+    fun togglePackage(packageName: String, selected: Boolean) {
+        if (selected) selectedPackages.add(packageName)
+        else selectedPackages.remove(packageName)
     }
 
-    fun getMonitoredPackages(): Set<String> {
-        return selectedPackages.toSet()
-    }
+    fun isMonitored(packageName: String): Boolean = packageName in selectedPackages
+    fun getMonitoredPackages(): Set<String> = selectedPackages.toSet()
 }
