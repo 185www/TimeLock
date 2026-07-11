@@ -33,23 +33,24 @@
 │                                                   │
 │  LockAccessibilityService (无障碍服务)               │
 │    ├─ 监听 android.intent.action.MAIN 的应用启动    │
-│    ├─ 检测到被监控应用 → 启动 InterceptActivity     │
+│    ├─ 检测到被监控应用 → 创建 WindowManager 悬浮层  │
 │    └─ 到点时执行 GLOBAL_ACTION_HOME 切回桌面        │
 │                                                   │
-│  InterceptActivity (拦截界面)                       │
+│  OverlayController (WindowManager 悬浮层)          │
+│    ├─ 直接绘制在屏幕最顶层，不依赖 Activity          │
 │    ├─ 全屏黑底 → "你打算用多久？"                   │
 │    ├─ 快捷按钮：5/15/30/60 分钟                    │
 │    ├─ 自定义输入框                                │
-│    └─ 确认 → 启动 CountdownService → finish()     │
+│    └─ 确认 → 移除悬浮层 → 启动 CountdownService     │
 │                                                   │
 │  CountdownService (前台服务)                       │
 │    ├─ 常驻通知栏显示剩余时间                       │
 │    ├─ 倒计时精度 1秒                              │
-│    └─ 到点 → 启动 TimeUpActivity                   │
+│    └─ 到点 → OverlayController 显示"时间到啦"       │
 │                                                   │
-│  TimeUpActivity (时间到界面)                       │
+│  TimeUp 悬浮层                                    │
 │    ├─ 全屏黑底 → "时间到啦" + "好的" 按钮          │
-│    └─ 点击 → 回到桌面                             │
+│    └─ 点击 → 移除悬浮层 → 5秒 cooldown             │
 │                                                   │
 └─────────────────────────────────────────────────┘
 ```
@@ -71,9 +72,7 @@ com.timelock/
 │   └── CountdownService.kt         # 倒计时前台服务
 └── ui/
     ├── screens/
-    │   ├── MainScreen.kt        # 主界面 Composable
-    │   ├── InterceptActivity.kt # 拦截界面
-    │   └── TimeUpActivity.kt    # 时间到界面
+    │   └── MainScreen.kt        # 主界面 Composable
     └── theme/
         ├── Color.kt
         ├── Theme.kt
@@ -96,11 +95,12 @@ com.timelock/
 
 | 风险 | 对策 |
 |------|------|
-| 拦截时按返回键 | InterceptActivity 覆写 onBackPressed，禁止返回 |
-| 拦截时按 Home 键 | 使用 Activity 而非 Dialog，且设置 taskAffinity="" 使其独立任务 |
-| 倒计时被系统杀进程 | 前台服务，优先级高 |
-| 用户关闭无障碍服务 | 主界面检测无障碍状态，提示开启 |
-| 时间到后再次打开应用 | LockState.isTimerRunning 标志位防止重复拦截 |
+| 拦截时按返回键 | 悬浮层 OnKeyListener 拦截 KEYCODE_BACK |
+| 拦截时按 Home 键 | 悬浮层属于系统窗口级别，Home 键无法移除 |
+| 倒计时被系统杀进程 | 前台服务 + 忽略电池优化 |
+| 用户关闭无障碍服务 | 主界面 ON_RESUME 实时检测状态 |
+| 时间到后再次打开应用 | LockState 5秒 cooldown 防止重复拦截 |
+| 后台启动拦截失效 | 使用 WindowManager 悬浮层，不依赖 Activity 启动 |
 
 ---
 

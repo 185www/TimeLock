@@ -13,6 +13,7 @@ import com.timelock.data.LockState
 class CountdownService : Service() {
 
     private var timer: CountDownTimer? = null
+    private var overlay: OverlayController? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -24,6 +25,10 @@ class CountdownService : Service() {
         if (seconds <= 0) {
             stopSelf()
             return START_NOT_STICKY
+        }
+
+        if (overlay == null) {
+            overlay = OverlayController(this)
         }
 
         LockState.remainingSeconds = seconds
@@ -50,11 +55,15 @@ class CountdownService : Service() {
                 LockState.isTimerRunning = false
                 LockState.remainingSeconds = 0L
 
-                LockAccessibilityService.instance?.showTimeUp()
-
                 try {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                 } catch (_: Exception) {}
+
+                overlay?.showTimeUpOverlay {
+                    LockState.isLocked = false
+                    LockState.lockedPackage = ""
+                }
+
                 stopSelf()
             }
         }.start()

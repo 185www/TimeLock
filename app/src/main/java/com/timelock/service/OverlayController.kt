@@ -4,11 +4,17 @@ import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,105 +22,133 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import androidx.compose.ui.viewinterop.AndroidView
+import com.timelock.data.LockState
 
 class OverlayController(private val context: Context) {
 
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-    private var overlayView: View? = null
+    private var currentOverlay: View? = null
 
-    fun showIntercept(onConfirm: (Int) -> Unit) {
+    fun showInterceptOverlay(onConfirm: (Int) -> Unit) {
         dismiss()
 
         val composeView = ComposeView(context).apply {
             setContent {
-                InterceptOverlay(onConfirm = { minutes ->
-                    onConfirm(minutes)
-                    dismiss()
-                })
+                InterceptOverlayContent(
+                    onConfirm = { minutes ->
+                        onConfirm(minutes)
+                        dismiss()
+                    }
+                )
+            }
+            isFocusable = true
+            isFocusableInTouchMode = true
+            setOnKeyListener { _, keyCode, event ->
+                if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
+                    true
+                } else false
             }
         }
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else
-                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
-            WindowManager.LayoutParams.FLAG_FULLSCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            getOverlayType(),
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED,
+                WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.START
+            gravity = Gravity.FILL
         }
 
         windowManager.addView(composeView, params)
-        overlayView = composeView
+        currentOverlay = composeView
     }
 
-    fun showTimeUp(onDismiss: () -> Unit) {
+    fun showTimeUpOverlay(onDismiss: () -> Unit) {
         dismiss()
 
         val composeView = ComposeView(context).apply {
             setContent {
-                TimeUpOverlay(onDismiss = {
-                    onDismiss()
-                    dismiss()
-                })
+                TimeUpOverlayContent(
+                    onDismiss = {
+                        LockState.cooldownUntil = System.currentTimeMillis() + 5000
+                        onDismiss()
+                        dismiss()
+                    }
+                )
+            }
+            isFocusable = true
+            isFocusableInTouchMode = true
+            setOnKeyListener { _, keyCode, event ->
+                if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
+                    true
+                } else false
             }
         }
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else
-                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
-            WindowManager.LayoutParams.FLAG_FULLSCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            getOverlayType(),
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED,
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.START
+            gravity = Gravity.FILL
         }
 
         windowManager.addView(composeView, params)
-        overlayView = composeView
+        currentOverlay = composeView
     }
 
     fun dismiss() {
-        overlayView?.let {
-            try { windowManager.removeView(it) } catch (_: Exception) {}
+        currentOverlay?.let {
+            try {
+                windowManager.removeView(it)
+            } catch (_: Exception) {}
         }
-        overlayView = null
+        currentOverlay = null
     }
 
-    fun isShowing(): Boolean = overlayView != null
+    private fun getOverlayType(): Int {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+    }
 }
 
 @Composable
-private fun InterceptOverlay(onConfirm: (Int) -> Unit) {
+private fun InterceptOverlayContent(onConfirm: (Int) -> Unit) {
     var inputText by remember { mutableStateOf("") }
     var selectedMinutes by remember { mutableIntStateOf(-1) }
+    val focusManager = LocalFocusManager.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .clickable { focusManager.clearFocus() }
             .systemBarsPadding()
-            .padding(32.dp),
+            .imePadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -138,7 +172,9 @@ private fun InterceptOverlay(onConfirm: (Int) -> Unit) {
                     onClick = {
                         selectedMinutes = mins
                         inputText = mins.toString()
+                        focusManager.clearFocus()
                     },
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isSelected) Color.White else Color.DarkGray,
                         contentColor = if (isSelected) Color.Black else Color.White
@@ -158,55 +194,78 @@ private fun InterceptOverlay(onConfirm: (Int) -> Unit) {
                 selectedMinutes = -1
             },
             label = { Text("自定义分钟", color = Color.Gray) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus() }
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                focusedBorderColor = Color.White,
+                unfocusedBorderColor = Color.Gray,
+                cursorColor = Color.White
+            ),
             textStyle = LocalTextStyle.current.copy(
-                color = Color.White,
                 fontSize = 24.sp,
                 textAlign = TextAlign.Center
             ),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(0.8f)
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         val minutes = inputText.toIntOrNull() ?: 0
         Button(
-            onClick = { onConfirm(minutes) },
+            onClick = {
+                focusManager.clearFocus()
+                onConfirm(minutes)
+            },
             enabled = minutes > 0,
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth(0.8f)
                 .height(56.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF4CAF50),
                 disabledContainerColor = Color.DarkGray
             )
         ) {
-            Text("确认 — 使用 ${minutes} 分钟", fontSize = 20.sp, color = Color.White)
+            Text(
+                "确认 — 使用 ${minutes} 分钟",
+                fontSize = 20.sp,
+                color = Color.White
+            )
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
         Text(
-            text = "锁定期间无法退出",
+            text = "锁定期间无法跳过",
             color = Color.Gray,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(top = 16.dp)
+            fontSize = 14.sp
         )
     }
 }
 
 @Composable
-private fun TimeUpOverlay(onDismiss: () -> Unit) {
+private fun TimeUpOverlayContent(onDismiss: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
             .systemBarsPadding()
-            .padding(32.dp),
+            .clickable { /* consume clicks */ },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(text = "⏰", fontSize = 72.sp)
+
         Spacer(modifier = Modifier.height(24.dp))
+
         Text(
             text = "时间到啦",
             color = Color.White,
@@ -214,11 +273,18 @@ private fun TimeUpOverlay(onDismiss: () -> Unit) {
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
+
         Spacer(modifier = Modifier.height(48.dp))
+
         Button(
             onClick = onDismiss,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .height(56.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFE53935)
+            )
         ) {
             Text("好的", fontSize = 20.sp, color = Color.White)
         }
