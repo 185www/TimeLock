@@ -9,19 +9,14 @@ import com.timelock.data.LockState
 
 class LockAccessibilityService : AccessibilityService() {
 
-    private lateinit var overlay: OverlayController
-
-    override fun onCreate() {
-        super.onCreate()
-        overlay = OverlayController(this)
-    }
-
     override fun onServiceConnected() {
         val info = AccessibilityServiceInfo().apply {
-            eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+            eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
+                AccessibilityEvent.TYPE_WINDOWS_CHANGED
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
             notificationTimeout = 0
-            flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+            flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
+                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
         }
         serviceInfo = info
     }
@@ -34,36 +29,17 @@ class LockAccessibilityService : AccessibilityService() {
         if (!LockState.canIntercept(packageName)) return
 
         if (AppRepository.isMonitored(packageName)) {
-            LockState.lockedPackage = packageName
-            LockState.isIntercepting = true
-
-            overlay.showInterceptOverlay { minutes ->
-                val seconds = minutes * 60L
-                LockState.isIntercepting = false
-                LockState.isTimerRunning = true
-                LockState.isLocked = true
-                LockState.remainingSeconds = seconds
-
-                val intent = Intent(this, CountdownService::class.java).apply {
-                    putExtra("duration_seconds", seconds)
-                }
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    startForegroundService(intent)
-                } else {
-                    startService(intent)
-                }
+            val intent = Intent(this, CountdownService::class.java).apply {
+                action = CountdownService.ACTION_INTERCEPT
+                putExtra(CountdownService.EXTRA_PACKAGE, packageName)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
             }
         }
     }
 
     override fun onInterrupt() {}
-
-    override fun onDestroy() {
-        overlay.dismiss()
-        super.onDestroy()
-    }
-
-    fun goHome() {
-        performGlobalAction(GLOBAL_ACTION_HOME)
-    }
 }
