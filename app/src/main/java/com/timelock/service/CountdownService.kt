@@ -8,7 +8,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.CountDownTimer
 import android.os.IBinder
-import android.os.PowerManager
 import com.timelock.data.LockState
 import com.timelock.ui.screens.TimeUpActivity
 
@@ -30,13 +29,12 @@ class CountdownService : Service() {
 
         LockState.remainingSeconds = seconds
         LockState.isTimerRunning = true
+        LockState.isLocked = true
 
         try {
             val notification = buildNotification(seconds)
             startForeground(NOTIFICATION_ID, notification)
-        } catch (_: Exception) {
-            // If startForeground fails, still try to run
-        }
+        } catch (_: Exception) {}
 
         timer?.cancel()
         timer = object : CountDownTimer(seconds * 1000, 1000) {
@@ -44,20 +42,17 @@ class CountdownService : Service() {
                 val remaining = millisUntilFinished / 1000
                 LockState.remainingSeconds = remaining
                 try {
-                    val notification = buildNotification(remaining)
                     val nm = getSystemService(NotificationManager::class.java)
-                    nm.notify(NOTIFICATION_ID, notification)
+                    nm.notify(NOTIFICATION_ID, buildNotification(remaining))
                 } catch (_: Exception) {}
             }
 
             override fun onFinish() {
                 LockState.isTimerRunning = false
-                LockState.isLocked = true
                 LockState.remainingSeconds = 0L
 
                 val intent = Intent(this@CountdownService, TimeUpActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                 }
                 startActivity(intent)
 
@@ -73,19 +68,6 @@ class CountdownService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        // Restart service if task is removed
-        val restartIntent = Intent(this, CountdownService::class.java).apply {
-            putExtra("duration_seconds", LockState.remainingSeconds)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(restartIntent)
-        } else {
-            startService(restartIntent)
-        }
-        super.onTaskRemoved(rootIntent)
-    }
-
     override fun onDestroy() {
         timer?.cancel()
         super.onDestroy()
@@ -97,9 +79,7 @@ class CountdownService : Service() {
                 CHANNEL_ID,
                 "时间锁倒计时",
                 NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                setShowBadge(false)
-            }
+            ).apply { setShowBadge(false) }
             val nm = getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(channel)
         }

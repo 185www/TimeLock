@@ -25,7 +25,10 @@ class TimeUpActivity : ComponentActivity() {
         setContent {
             TimeUpScreen(
                 onDismiss = {
-                    LockState.reset()
+                    LockState.cooldownUntil = System.currentTimeMillis() + 5000
+                    LockState.isLocked = false
+                    LockState.lockedPackage = ""
+
                     val homeIntent = Intent(Intent.ACTION_MAIN).apply {
                         addCategory(Intent.CATEGORY_HOME)
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -37,9 +40,7 @@ class TimeUpActivity : ComponentActivity() {
         }
     }
 
-    override fun onBackPressed() {
-        // Block back during time-up screen
-    }
+    override fun onBackPressed() {}
 }
 
 @Composable
