@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">时间锁</string>
+    <string name="accessibility_service_description">监控选定应用的启动，强制设定使用时长</string>
 </resources>

@@ -2,36 +2,43 @@
 
 > 强制专注，戒掉手机瘾。一个真正安全、开源、不可绕过的 Android 防沉迷应用。
 
-[![GitHub release](https://img.shields.io/github/v/release/185www/TimeLock)](https://github.com/185www/TimeLock/releases)
 [![Build APK](https://github.com/185www/TimeLock/actions/workflows/build.yml/badge.svg)](https://github.com/185www/TimeLock/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## 📱 这是什么？
+## 它是怎么工作的？
 
-参考何同学「时间锁」理念，做一个**真正好用**的防沉迷工具。
+1. 打开时间锁，勾选你想监控的应用（微信、抖音、微博等）
+2. 当你打开被监控的应用时，**时间锁瞬间接管屏幕**
+3. 黑屏提示"你打算用多久？"→ 输入时间 → 确认
+4. 应用正常打开，后台倒计时开始
+5. **时间到！** 自动切回桌面，弹出"时间到啦"
 
-你设定时间，手机在这段时间内彻底变为「砖头」，让你强制专注于现实世界。
+## ✨ 特点
 
-## ✨ 核心特性
+- **🔒 强制拦截** — 打开被监控应用时强制弹窗，不可跳过
+- **⏱️ 灵活计时** — 5/15/30/60 分钟快捷选择，也支持自定义
+- **🛡️ 防绕过** — 拦截界面无法返回，后台服务保活
+- **📱 轻量极简** — 无需登录，无广告，无多余权限
+- **🔓 完全开源** — 代码可审计，无后门
 
-- **🔒 强制锁定** — 利用 Android Screen Pinning + Device Admin，无法绕过
-- **📋 白名单** — 保留紧急通话和必要 App
-- **🛡️ 防绕过** — 重启恢复、防 ADB、防卸载
-- **📊 专注统计** — 记录你的每一次专注
-- **🧩 番茄钟** — 内置 25+5 标准工作法
-- **🔓 完全开源** — 代码可审计，无后门，不上传任何数据
+## 📥 下载
 
-## 🚀 下载
+[Releases 页面](https://github.com/185www/TimeLock/releases) 下载最新 APK
 
-- [GitHub Releases](https://github.com/185www/TimeLock/releases) — 下载最新 APK
+## 🔧 使用方式
+
+1. 安装 APK
+2. 打开 App → 勾选要监控的应用
+3. **前往系统设置 → 无障碍 → 已安装的应用 → 时间锁 → 开启**
+4. 打开被监控的应用，即可体验
 
 ## 🛠️ 技术栈
 
 - **语言**: Kotlin
-- **UI**: Jetpack Compose
-- **架构**: MVVM + Repository Pattern
+- **UI**: Jetpack Compose + Material3
+- **核心**: AccessibilityService + Foreground Service
 - **CI/CD**: GitHub Actions → 自动构建 APK
 
 ## 📄 许可证
