@@ -1,36 +1,18 @@
 package com.timelock.service
 
 import android.content.Context
+import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.os.Build
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.EditText
+import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import com.timelock.data.LockState
 
 class OverlayController(private val context: Context) {
 
@@ -40,253 +22,191 @@ class OverlayController(private val context: Context) {
     fun showInterceptOverlay(onConfirm: (Int) -> Unit) {
         dismiss()
 
-        val composeView = ComposeView(context).apply {
-            setContent {
-                InterceptOverlayContent(
-                    onConfirm = { minutes ->
-                        onConfirm(minutes)
-                        dismiss()
-                    }
-                )
-            }
+        val density = context.resources.displayMetrics.density
+        fun dp(n: Int) = (n * density).toInt()
+
+        val root = FrameLayout(context).apply {
+            setBackgroundColor(Color.BLACK)
             isFocusable = true
             isFocusableInTouchMode = true
             setOnKeyListener { _, keyCode, event ->
-                if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                    true
-                } else false
+                event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK
             }
         }
 
+        val container = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            layoutParams = FrameLayout.LayoutParams(-1, -1)
+        }
+        root.addView(container)
+
+        container.addView(TextView(context).apply {
+            text = "你打算用多久？"
+            textSize = 28f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, dp(48))
+        })
+
+        var selectedMinutes = 0
+        val confirmBtn = Button(context).apply {
+            text = "请先选择时长"
+            setTextColor(Color.WHITE)
+            textSize = 18f
+            isEnabled = false
+            setBackgroundColor(Color.parseColor("#FF5722"))
+            layoutParams = LinearLayout.LayoutParams(dp(280), dp(56))
+        }
+        confirmBtn.setOnClickListener {
+            if (selectedMinutes > 0) {
+                onConfirm(selectedMinutes)
+                dismiss()
+            }
+        }
+
+        fun makePresetButton(mins: Int): Button {
+            val btn = Button(context).apply {
+                text = "${mins}分钟"
+                setTextColor(Color.WHITE)
+                textSize = 16f
+                setBackgroundColor(Color.DKGRAY)
+                layoutParams = LinearLayout.LayoutParams(dp(88), dp(48)).apply {
+                    setMargins(dp(6), 0, dp(6), 0)
+                }
+                setOnClickListener {
+                    selectedMinutes = mins
+                    confirmBtn.text = "确认 — 使用 ${mins} 分钟"
+                    confirmBtn.isEnabled = true
+                    confirmBtn.setBackgroundColor(Color.parseColor("#4CAF50"))
+                }
+            }
+            return btn
+        }
+
+        fun addRow(minsList: List<Int>) {
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                    setMargins(0, 0, 0, dp(12))
+                }
+            }
+            for (m in minsList) row.addView(makePresetButton(m))
+            container.addView(row)
+        }
+
+        addRow(listOf(5, 10, 15))
+        addRow(listOf(30, 60, 90))
+        addRow(listOf(120))
+
+        container.addView(TextView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, dp(32))
+        })
+
+        container.addView(confirmBtn)
+
+        container.addView(TextView(context).apply {
+            text = "锁定期间无法跳过"
+            textSize = 14f
+            setTextColor(Color.GRAY)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(24), 0, 0)
+        })
+
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
+            -1, -1,
             getOverlayType(),
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
                 WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.FILL
-        }
+        ).apply { gravity = Gravity.FILL }
 
-        windowManager.addView(composeView, params)
-        currentOverlay = composeView
+        windowManager.addView(root, params)
+        currentOverlay = root
     }
 
     fun showTimeUpOverlay(onDismiss: () -> Unit) {
         dismiss()
 
-        val composeView = ComposeView(context).apply {
-            setContent {
-                TimeUpOverlayContent(
-                    onDismiss = {
-                        LockState.cooldownUntil = System.currentTimeMillis() + 5000
-                        onDismiss()
-                        dismiss()
-                    }
-                )
-            }
+        val density = context.resources.displayMetrics.density
+        fun dp(n: Int) = (n * density).toInt()
+
+        val root = FrameLayout(context).apply {
+            setBackgroundColor(Color.BLACK)
             isFocusable = true
             isFocusableInTouchMode = true
             setOnKeyListener { _, keyCode, event ->
-                if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                    true
-                } else false
+                event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK
             }
         }
 
+        val container = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            layoutParams = FrameLayout.LayoutParams(-1, -1)
+        }
+        root.addView(container)
+
+        container.addView(TextView(context).apply {
+            text = "⏰"
+            textSize = 72f
+            gravity = Gravity.CENTER
+        })
+
+        container.addView(TextView(context).apply {
+            text = "时间到啦"
+            textSize = 36f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, dp(24), 0, dp(48))
+        })
+
+        Button(context).apply {
+            text = "好的"
+            setTextColor(Color.WHITE)
+            textSize = 20f
+            setBackgroundColor(Color.parseColor("#E53935"))
+            layoutParams = LinearLayout.LayoutParams(dp(280), dp(56))
+            setOnClickListener { onDismiss() }
+        }.also { container.addView(it) }
+
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
+            -1, -1,
             getOverlayType(),
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.FILL
-        }
+        ).apply { gravity = Gravity.FILL }
 
-        windowManager.addView(composeView, params)
-        currentOverlay = composeView
+        windowManager.addView(root, params)
+        currentOverlay = root
     }
 
     fun dismiss() {
         currentOverlay?.let {
-            try {
-                windowManager.removeView(it)
-            } catch (_: Exception) {}
+            try { windowManager.removeView(it) } catch (_: Exception) {}
         }
         currentOverlay = null
     }
 
     private fun getOverlayType(): Int {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        } else {
+        else {
             @Suppress("DEPRECATION")
             WindowManager.LayoutParams.TYPE_PHONE
-        }
-    }
-}
-
-@Composable
-private fun InterceptOverlayContent(onConfirm: (Int) -> Unit) {
-    var inputText by remember { mutableStateOf("") }
-    var selectedMinutes by remember { mutableIntStateOf(-1) }
-    val focusManager = LocalFocusManager.current
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .clickable { focusManager.clearFocus() }
-            .systemBarsPadding()
-            .imePadding(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "你打算用多久？",
-            color = Color.White,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            listOf(5, 15, 30, 60).forEach { mins ->
-                val isSelected = selectedMinutes == mins
-                Button(
-                    onClick = {
-                        selectedMinutes = mins
-                        inputText = mins.toString()
-                        focusManager.clearFocus()
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isSelected) Color.White else Color.DarkGray,
-                        contentColor = if (isSelected) Color.Black else Color.White
-                    )
-                ) {
-                    Text("${mins}分钟", fontSize = 16.sp)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        OutlinedTextField(
-            value = inputText,
-            onValueChange = {
-                inputText = it.filter { c -> c.isDigit() }
-                selectedMinutes = -1
-            },
-            label = { Text("自定义分钟", color = Color.Gray) },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = { focusManager.clearFocus() }
-            ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                focusedBorderColor = Color.White,
-                unfocusedBorderColor = Color.Gray,
-                cursorColor = Color.White
-            ),
-            textStyle = LocalTextStyle.current.copy(
-                fontSize = 24.sp,
-                textAlign = TextAlign.Center
-            ),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(0.8f)
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        val minutes = inputText.toIntOrNull() ?: 0
-        Button(
-            onClick = {
-                focusManager.clearFocus()
-                onConfirm(minutes)
-            },
-            enabled = minutes > 0,
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF4CAF50),
-                disabledContainerColor = Color.DarkGray
-            )
-        ) {
-            Text(
-                "确认 — 使用 ${minutes} 分钟",
-                fontSize = 20.sp,
-                color = Color.White
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "锁定期间无法跳过",
-            color = Color.Gray,
-            fontSize = 14.sp
-        )
-    }
-}
-
-@Composable
-private fun TimeUpOverlayContent(onDismiss: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .systemBarsPadding()
-            .clickable { /* consume clicks */ },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(text = "⏰", fontSize = 72.sp)
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "时间到啦",
-            color = Color.White,
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(48.dp))
-
-        Button(
-            onClick = onDismiss,
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFE53935)
-            )
-        ) {
-            Text("好的", fontSize = 20.sp, color = Color.White)
         }
     }
 }

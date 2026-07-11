@@ -58,6 +58,11 @@ class LockAccessibilityService : AccessibilityService() {
 
     override fun onInterrupt() {}
 
+    override fun onDestroy() {
+        overlay.dismiss()
+        super.onDestroy()
+    }
+
     fun goHome() {
         performGlobalAction(GLOBAL_ACTION_HOME)
     }
