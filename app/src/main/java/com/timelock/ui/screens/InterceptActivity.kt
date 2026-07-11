@@ -1,7 +1,10 @@
 package com.timelock.ui.screens
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.view.KeyEvent
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -25,14 +28,25 @@ class InterceptActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        window.addFlags(
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+        )
+
         setContent {
             InterceptScreen(
                 onConfirm = { minutes ->
                     val seconds = minutes * 60L
-                    val intent = Intent(this@InterceptActivity, CountdownService::class.java).apply {
+                    val intent = Intent(this, CountdownService::class.java).apply {
                         putExtra("duration_seconds", seconds)
                     }
-                    startService(intent)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        startForegroundService(intent)
+                    } else {
+                        startService(intent)
+                    }
                     LockState.isIntercepting = false
                     finish()
                 }
@@ -40,8 +54,16 @@ class InterceptActivity : ComponentActivity() {
         }
     }
 
-    override fun onBackPressed() {
-        // Block back press during intercept
+    override fun onBackPressed() {}
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK ||
+            keyCode == KeyEvent.KEYCODE_HOME ||
+            keyCode == KeyEvent.KEYCODE_APP_SWITCH
+        ) {
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
     }
 }
 
@@ -54,7 +76,8 @@ private fun InterceptScreen(onConfirm: (Int) -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .padding(32.dp),
+            .padding(32.dp)
+            .systemBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -128,5 +151,12 @@ private fun InterceptScreen(onConfirm: (Int) -> Unit) {
                 color = Color.White
             )
         }
+
+        Text(
+            text = "锁定期间无法退出",
+            color = Color.Gray,
+            fontSize = 14.sp,
+            modifier = Modifier.padding(top = 16.dp)
+        )
     }
 }
