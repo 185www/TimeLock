@@ -4,7 +4,7 @@
 
     <string name="channel_timer">使用计时</string>
     <string name="channel_timer_desc">显示应用剩余使用时间</string>
-    <string name="notification_timer_text">%s 剩余 %s</string>
+    <string name="notification_timer_text">%1$s 剩余 %2$s</string>
     <string name="notification_title">时间锁运行中</string>
 
     <string name="accessibility_service_label">时间锁 · 应用使用限制</string>
@@ -17,7 +17,7 @@
     <string name="home_title">时间锁</string>
     <string name="home_subtitle">打开受限应用 → 设定使用时间 → 时间到自动退出</string>
     <string name="home_status_idle">当前没有正在计时的应用</string>
-    <string name="home_status_running">%s 正在使用，剩余 %s</string>
+    <string name="home_status_running">%1$s 正在使用，剩余 %2$s</string>
     <string name="home_select_apps">选择要限制的应用</string>
     <string name="home_accessibility_off">无障碍权限未开启</string>
     <string name="home_accessibility_on">无障碍权限已开启</string>
