@@ -15,7 +15,7 @@ class TimeLockApp : Application() {
         val channel = NotificationChannel(
             CHANNEL_ID,
             getString(R.string.channel_timer),
-            NotificationManager.IMPORTURITY_LOW
+            NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = getString(R.string.channel_timer_desc)
             setShowBadge(false)
