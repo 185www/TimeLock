@@ -1,3 +1,5 @@
-# TimeLock ProGuard rules
--keep class com.timelock.** { *; }
--dontwarn com.timelock.**
+-keepattributes Signature
+-keepattributes *Annotation*
+
+-keep class com.timelock.app.** { *; }
+-dontwarn com.timelock.app.**
