@@ -88,7 +88,7 @@ class TimeLockAccessibilityService : AccessibilityService() {
     }
 
     private suspend fun expiryLoop() {
-        while (isActive) {
+        while (scope.isActive) {
             delay(1000)
             val pkg = currentPackage ?: continue
             if (filter.shouldIgnore(pkg)) continue
