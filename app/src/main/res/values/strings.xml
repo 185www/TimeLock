@@ -1,5 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">时间锁</string>
-    <string name="accessibility_service_description">监控选定应用的启动，强制设定使用时长</string>
+
+    <string name="channel_timer">使用计时</string>
+    <string name="channel_timer_desc">显示应用剩余使用时间</string>
+    <string name="notification_timer_text">%s 剩余 %s</string>
+    <string name="notification_title">时间锁运行中</string>
+
+    <string name="accessibility_service_label">时间锁 · 应用使用限制</string>
+    <string name="accessibility_service_description">时间锁需要通过“无障碍”检测你正在使用的应用，以便在应用打开时弹出使用时间设置，并在时间到后自动退出该应用。本应用不会收集或上传任何数据。</string>
+
+    <string name="disclosure_title">需要开启“无障碍”权限</string>
+    <string name="disclosure_body">时间锁通过系统的“无障碍”功能来获知你当前打开了哪个应用。\n\n只有开启后，应用才能在你要限制的应用启动时弹出“设定使用时间”窗口，并在时间到时自动退出该应用。\n\n我们不会读取屏幕内容，也不会上传任何数据，所有判断都在你的手机本地完成。</string>
+    <string name="disclosure_open">去开启无障碍权限</string>
+
+    <string name="home_title">时间锁</string>
+    <string name="home_subtitle">打开受限应用 → 设定使用时间 → 时间到自动退出</string>
+    <string name="home_status_idle">当前没有正在计时的应用</string>
+    <string name="home_status_running">%s 正在使用，剩余 %s</string>
+    <string name="home_select_apps">选择要限制的应用</string>
+    <string name="home_accessibility_off">无障碍权限未开启</string>
+    <string name="home_accessibility_on">无障碍权限已开启</string>
+    <string name="home_open_settings">打开无障碍设置</string>
+
+    <string name="select_title">选择要限制的应用</string>
+    <string name="select_hint">勾选你希望限制使用时长的应用，打开它们时会先让你设定本次可用时间。</string>
+    <string name="select_empty">没有找到可显示的应用</string>
+    <string name="select_selected">已选择 %d 个</string>
+    <string name="select_done">完成</string>
+
+    <string name="prompt_title">设定使用时间</string>
+    <string name="prompt_subtitle">你打开了 %s，想用多久？</string>
+    <string name="prompt_custom">自定义（分钟）</string>
+    <string name="prompt_start">开始使用</string>
+    <string name="prompt_quit">不使用，退出</string>
+    <string name="prompt_pick">请选择一个时间</string>
+
+    <string name="timeup_title">时间到</string>
+    <string name="timeup_body">%s 的使用时间已结束，已自动退出。</string>
+    <string name="timeup_home">返回桌面</string>
 </resources>
