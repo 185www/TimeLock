@@ -1,9 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.TimeLock" parent="android:Theme.Material.Light.NoActionBar" />
-    <style name="Theme.TimeLock.Black" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@android:color/black</item>
-        <item name="android:windowNoTitle">true</item>
+    <style name="Theme.TimeLock" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#FF0B0F17</item>
+        <item name="android:navigationBarColor">#FF0B0F17</item>
         <item name="android:windowFullscreen">true</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
+    <!-- Used by the on-top prompt / time-up activities -->
+    <style name="Theme.TimeLock.Overlay" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#FF0B0F17</item>
+        <item name="android:navigationBarColor">#FF0B0F17</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowIsTranslucent">false</item>
     </style>
 </resources>
