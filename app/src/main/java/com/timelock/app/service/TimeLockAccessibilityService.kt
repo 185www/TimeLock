@@ -52,9 +52,11 @@ class TimeLockAccessibilityService : AccessibilityService() {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
         if (filter.shouldIgnore(pkg)) {
-            // Reset tracking when returning to the launcher so the next open of a
-            // monitored app is treated as a fresh foreground event.
-            if (filter.isLauncher(pkg)) {
+            // Reset tracking when returning to the launcher, or when our own app
+            // comes to the foreground, so the next open of a monitored app is
+            // treated as a fresh foreground event and expiry can't wrongly fire
+            // while the user is elsewhere.
+            if (filter.isLauncher(pkg) || pkg == packageName) {
                 currentPackage = null
                 promptPackage = null
             }
