@@ -54,7 +54,7 @@ class CountdownService : Service() {
         kotlinx.coroutines.runBlocking { repo.getSession() }
 
     private suspend fun tickLoop() {
-        while (isActive) {
+        while (scope.isActive) {
             val session = repo.getSession()
             if (session == null || System.currentTimeMillis() >= session.endTime) {
                 // Time's up (or session gone): drop it so reopening prompts fresh,
