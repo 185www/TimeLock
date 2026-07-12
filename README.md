@@ -1,46 +1,39 @@
-# TimeLock · 时间锁
+# 时间锁 (TimeLock)
 
-> 强制专注，戒掉手机瘾。一个真正安全、开源、不可绕过的 Android 防沉迷应用。
+> 打开受限应用 → 设定本次使用时间 → 时间到自动退出。
 
-[![Build APK](https://github.com/185www/TimeLock/actions/workflows/build.yml/badge.svg)](https://github.com/185www/TimeLock/actions/workflows/build.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+何同学在戒手机视频里发布的“时间锁”是个锁住整个手机的思路，实际体验差、多年不更新。
+本项目换了一个更实用的思路：**按应用限制**——你打开某个应用，时间锁先弹出窗口让你设定本次能用多久，倒计时开始，时间一到就自动退出该应用。
 
----
+技术实现参考开源项目 [Mindful](https://github.com/ivstka95/Mindful)：用
+`AccessibilityService` 监听前台应用、用 `<queries>` 只枚举可启动的应用（不申请
+`QUERY_ALL_PACKAGES`），并在需要时弹出一个全屏窗口拦截。所有判断都在本地完成，不上传任何数据。
 
-## 它是怎么工作的？
+## 工作方式
 
-1. 打开时间锁，勾选你想监控的应用（微信、抖音、微博等）
-2. 当你打开被监控的应用时，**时间锁瞬间接管屏幕**
-3. 黑屏提示"你打算用多久？"→ 输入时间 → 确认
-4. 应用正常打开，后台倒计时开始
-5. **时间到！** 自动切回桌面，弹出"时间到啦"
+1. 在“选择要限制的应用”里勾选你容易沉迷的应用。
+2. 开启 **无障碍** 权限（应用内会引导你）。
+3. 之后你打开任意一个受限应用，时间锁会**先弹窗让你设定使用时间**。
+4. 设定后开始倒计时，你可以正常使用。
+5. 时间一到，时间锁**自动退出该应用**，并提示“时间到”。
 
-## ✨ 特点
+## 技术要点（照搬 Mindful 的成熟做法）
 
-- **🔒 强制拦截** — 打开被监控应用时强制弹窗，不可跳过
-- **⏱️ 灵活计时** — 5/15/30/60 分钟快捷选择，也支持自定义
-- **🛡️ 防绕过** — 拦截界面无法返回，后台服务保活
-- **📱 轻量极简** — 无需登录，无广告，无多余权限
-- **🔓 完全开源** — 代码可审计，无后门
+- **前台应用检测**：`AccessibilityService` 监听 `TYPE_WINDOW_STATE_CHANGED`，过滤掉自身、桌面、系统 UI。
+- **应用列表**：只通过 `PackageManager` 查询 `MAIN/LAUNCHER` 应用，不申请 `QUERY_ALL_PACKAGES`，尊重隐私。
+- **后台保护 / 倒计时**：`CountdownService` 前台服务持续计时并在通知栏显示剩余时间，即使主界面关掉也在运行；开机自启时若仍有未结束的会话会自动恢复。
+- **强制操作**：时间到时通过无障碍的 `performGlobalAction(GLOBAL_ACTION_HOME)` 把用户送回桌面并退出目标应用。
 
-## 📥 下载
+## 构建
 
-[Releases 页面](https://github.com/185www/TimeLock/releases) 下载最新 APK
+```bash
+./gradlew assembleRelease
+```
 
-## 🔧 使用方式
+APK 生成在 `app/build/outputs/apk/release/`。
 
-1. 安装 APK
-2. 打开 App → 勾选要监控的应用
-3. **前往系统设置 → 无障碍 → 已安装的应用 → 时间锁 → 开启**
-4. 打开被监控的应用，即可体验
+仓库已配置 GitHub Actions（`Build APK`），push 到 `main` 或打 `v*` tag 会自动构建。
 
-## 🛠️ 技术栈
+## 许可证
 
-- **语言**: Kotlin
-- **UI**: Jetpack Compose + Material3
-- **核心**: AccessibilityService + Foreground Service
-- **CI/CD**: GitHub Actions → 自动构建 APK
-
-## 📄 许可证
-
-[MIT License](LICENSE)
+MIT
